@@ -1,6 +1,6 @@
 ---
 name: kick-the-tires
-description: Health check of AI the agent setup. Audits installed skills, tests MCP servers, browser use and computer use, fetches a current Danish news, identifies the client, agent and model, and reports available updates in a short markdown status report. Use when the user says "kick the tires", "/kick-the-tires", or asks to check, test or audit their skills, MCP servers, tools or client setup.
+description: Health check of an AI agent setup. Audits installed skills, tests MCP servers, browser use, computer use and web search, identifies the client, agent and model, and reports available updates in a short markdown status report. Use when the user says "kick the tires", "/kick-the-tires", or asks to check, test or audit their skills, MCP servers, tools or client setup.
 ---
 
 # Kick the tires
@@ -15,9 +15,8 @@ Status symbols used everywhere: `✔` worked · `⚠` works but needs attention 
 Tell the user in one line that the check is starting, then work through the steps in order.
 
 **Timing.** Every row in the report shows how long it took, as minutes:seconds (`0:07`, `2:05`).
-- The script times its own parts (Skills, Updates, News) and returns them in `timings`.
-- Time the agent steps yourself with a clock mark: run `date +%s` and note the number. Take a mark **before step 1**, **before steps 3, 4 and 5**, and **before step 7**. A step's time is the next mark minus its own. The total is the step 7 mark minus the step 1 mark.
-- If News needs the web-search fallback, mark before and after that search and use that time instead.
+- The script times its own parts (Skills, Updates) and returns them in `timings`.
+- Time the agent steps yourself with a clock mark: run `date +%s` and note the number. Take a mark **before step 1**, **before steps 3, 4, 5 and 6**, and **before step 7**. A step's time is the next mark minus its own. The total is the step 7 mark minus the step 1 mark.
 - Never estimate a time. If a mark is missing, write `–`.
 
 ## 1. Facts and skill audit (script)
@@ -32,11 +31,10 @@ It prints JSON with:
 - `environment`: client, agent and versions
 - `skills`: a static audit of every installed skill, with `items[].problems`
 - `skillUpdates` and `clientUpdates`: each with `status` (current / outdated / unknown) and `fix`
-- `news`: one fresh DR or TV 2 headline
-- `timings`: `skills`, `updates`, `news` and `total`, as minutes:seconds
+- `timings`: `skills`, `updates` and `total`, as minutes:seconds
 - `errors`: sections that crashed
 
-It needs no input and takes about 10 seconds. If the script itself fails, mark Skills and Updates `✖` with the error and keep going. You can still do News yourself (see step 6).
+It needs no input and takes about 10 seconds. If the script itself fails, mark Skills and Updates `✖` with the error and keep going.
 
 ## 2. Identify yourself
 
@@ -96,11 +94,19 @@ Follow the route's safety rules: no terminals, password managers or sign-in prom
 - If the user presses Esc (`stopped_by_user`), mark it `⚠ stopped by user` and continue the run without retrying.
 - If access to the app is declined (`app_not_approved` or similar), mark it `⚠ access to <app> declined`. Don't retry, and don't switch app or route to get around it. Continue the run, and add a To fix row saying how to approve the app.
 
-## 6. News
+## 6. Web search
 
-Use `news` from the probe. Keep the Danish headline as is, and write a **one-sentence summary in the language of the conversation**, based only on the headline and description.
+This tests your own ability to search the web and fetch information from the internet. Use your built-in web search tool (such as WebSearch in Claude Code or web search in Codex) and your web fetch tool (such as WebFetch). Don't use the browser from step 4, the shell or a script; they don't test search.
 
-If `news.status` is `fail`, search the web for a current story from dr.dk or tv2.dk and use that; it must have a direct article link. If nothing works, mark `✖` with the reason.
+1. **Search** the web for fresh Danish news: any story from a Danish news outlet published in the last 24 hours. Generic queries often return old pages, so limit the search to Danish news sites (a domain filter, or `site:dr.dk OR site:tv2.dk`) with a query like `seneste nyt`.
+2. **Fetch** a story's article link and read its headline and publish time (relative times like "51 min. siden" count). If the results only give a front page, fetch it to find an article link first. If a fetch fails, try one other article before giving up.
+
+Keep the Danish headline as is, and write a **one-sentence summary in the language of the conversation**, based only on what you found.
+
+- `✔` the search found a fresh Danish story and the fetch read it: `WebSearch + WebFetch → **DR** · [headline](https://www.dr.dk/…) — summary`
+- `⚠` only one half worked: the client has no fetch tool, or every fetch failed. Say which, with the error you observed. With a fetch tool but no search tool, fetch a Danish news front page such as `https://www.dr.dk/nyheder` instead, pick a fresh story, and mark `⚠ no search tool`.
+- `✖` the search errored, or found nothing from the last 24 hours
+- `–` the client has neither a web search nor a web fetch tool
 
 ## 7. Report
 
@@ -110,7 +116,7 @@ Output only this. No preamble, and nothing after it except the closing line if o
 ## Kick the tires · 29 Oct 2026, 09:14 · took 3:12
 
 - **Client:** Orca 1.4.237 (local build) · Claude Code 2.1.312 · Opus 5.5 (Anthropic)
-- **Working:** browser, computer use, news, 47 skills, 2 MCP servers
+- **Working:** browser, computer use, web search, 47 skills, 2 MCP servers
 - **Needs attention:** 2 updates, 3 MCP sign-ins
 - **Broken:** none
 
@@ -118,7 +124,7 @@ Output only this. No preamble, and nothing after it except the closing line if o
 |---|:-:|--:|---|
 | Browser | ✔ | 0:18 | Orca browser → opened dr.dk |
 | Computer use | ✔ | 2:05 | open-cu → smiley thumbs-up drawn in Freeform |
-| News | ✔ | 0:01 | **DR** · [Samsø frygter eksplosion i dieselpris](https://www.dr.dk/…) — Samsø's ferry company faces a monthly shortfall of DKK 650,000 as diesel prices rise. |
+| Web search | ✔ | 0:09 | WebSearch + WebFetch → **DR** · [Samsø frygter eksplosion i dieselpris](https://www.dr.dk/…) — Samsø's ferry company faces a monthly shortfall of DKK 650,000 as diesel prices rise. |
 | Skills | ⚠ | 0:03 | 47 ok · 3 warnings · 1 update |
 | MCP | ⚠ | 0:09 | 2 ok · 3 need sign-in |
 | Updates | ⚠ | 0:02 | Codex 0.163.0 → 0.165.0 · Orca 1.4.237 → 1.4.244 |
@@ -135,7 +141,7 @@ Output only this. No preamble, and nothing after it except the closing line if o
 Rules for filling it in:
 - **Summary bullets:** Working, Needs attention and Broken name **areas**, not every item. Drop a bullet that would be empty, except write `**Broken:** none` when nothing is broken.
 - **Table:** always these six rows, in this order. Each Result cell is one line: the route used and what it produced.
-- **Time column and title:** the Skills, Updates and News times come from the script's `timings` (or your own marks for a web-search fallback). MCP, Browser and Computer use come from your clock marks. The title's `took` is the full run, from your first mark to your last. A check that wasn't available (`–`) gets `–` as its time.
+- **Time column and title:** the Skills and Updates times come from the script's `timings`. MCP, Browser, Computer use and Web search come from your clock marks. The title's `took` is the full run, from your first mark to your last. A check that wasn't available (`–`) gets `–` as its time.
 - **Skills cell:** counts from `skills.counts` plus the outdated items in `skillUpdates`. Skills whose update source is unknown aren't a problem; don't count them as warnings.
 - **Updates cell:** client updates only (Claude Code, Codex, Orca). Show `✔ all current` when nothing is outdated, or `⚠ couldn't check` with the reason.
 - **To fix:** one row per actionable item: every `✖`, every `⚠`, and every outdated skill, plugin or client. Use the `fix` from the probe. For skill problems, give the file to edit. Put the most important first.

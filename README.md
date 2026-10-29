@@ -9,7 +9,7 @@ It checks:
 - **MCP servers:** each connected server, with one read-only test call
 - **Browser:** opens dr.dk through whichever browser route the session has
 - **Computer use:** draws a smiley person giving a thumbs-up in a desktop app
-- **News:** a fresh headline from DR or TV 2
+- **Web search:** the agent searches the web for fresh Danish news, then fetches the article it finds, to prove it can get live information from the internet
 - **Updates:** newer releases of Claude Code, Codex and Orca
 
 The skill only reports. It never installs, updates, signs in or changes settings; the report tells you how to fix things.

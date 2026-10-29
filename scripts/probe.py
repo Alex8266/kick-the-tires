@@ -2,9 +2,9 @@
 """Collect the facts for a Kick the tires run and print them as JSON.
 
 Covers what a script can check reliably: the environment, a static audit of
-every installed skill, update checks for skills, plugins and clients, and one
-current Danish headline. Browser, computer use and MCP checks need the agent's
-own tools, so SKILL.md handles those.
+every installed skill, and update checks for skills, plugins and clients.
+Browser, computer use, web search and MCP checks need the agent's own tools,
+so SKILL.md handles those.
 
 The script only reads. It never installs, updates or changes anything.
 """
@@ -14,9 +14,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import datetime as dt
-import email.utils
 import hashlib
-import html
 import json
 import os
 import platform
@@ -27,17 +25,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 TIMEOUT = 10
 USER_AGENT = "kick-the-tires/1.0"
-NEWS_FEEDS = [
-    ("DR", "https://www.dr.dk/nyheder/service/feeds/indland"),
-    ("DR", "https://www.dr.dk/nyheder/service/feeds/senestenyt"),
-    ("TV 2", "https://feeds.services.tv2.dk/api/feeds/nyheder/rss"),
-]
-NEWS_MAX_AGE = dt.timedelta(hours=48)
 ORCA_APP = Path("/Applications/Orca.app")
 REF_PREFIXES = ("scripts", "references", "assets", "templates")
 
@@ -544,55 +535,6 @@ def client_updates(env_info: dict, skills: list[dict], orca_app: Path) -> list[d
 
 
 # --------------------------------------------------------------------------
-# News
-# --------------------------------------------------------------------------
-
-def strip_html(text: str) -> str:
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", text or ""))).strip()
-
-
-def parse_feed(xml_bytes: bytes) -> list[dict]:
-    root = ET.fromstring(xml_bytes)
-    items = []
-    for it in root.iter("item"):
-        when = None
-        raw = it.findtext("pubDate")
-        if raw:
-            try:
-                when = email.utils.parsedate_to_datetime(raw)
-                if when.tzinfo is None:
-                    when = when.replace(tzinfo=dt.timezone.utc)
-            except (TypeError, ValueError):
-                when = None
-        items.append({
-            "title": strip_html(it.findtext("title") or ""),
-            "link": (it.findtext("link") or "").strip(),
-            "description": strip_html(it.findtext("description") or "")[:400],
-            "published": when,
-        })
-    return [i for i in items if i["title"] and i["link"]]
-
-
-def fetch_news(now: dt.datetime) -> dict:
-    errors = []
-    for source, url in NEWS_FEEDS:
-        try:
-            items = [i for i in parse_feed(http_get(url)) if i["published"]]
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{source} {url}: {describe_error(exc)}")
-            continue
-        fresh = [i for i in items if now - i["published"] <= NEWS_MAX_AGE]
-        if not fresh:
-            errors.append(f"{source} {url}: no story from the last 48 hours")
-            continue
-        top = max(fresh, key=lambda i: i["published"])
-        return {"status": "ok", "source": source, "feed": url, "title": top["title"],
-                "description": top["description"], "link": top["link"],
-                "published": top["published"].isoformat(), "errors": errors}
-    return {"status": "fail", "errors": errors}
-
-
-# --------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------
 
@@ -629,19 +571,17 @@ def probe(home: Path, cwd: Path, env: dict[str, str], orca_app: Path = ORCA_APP)
     env_info = env_info or {"client": "unknown", "clientVersion": None, "agent": "unknown"}
     skills, skills_err, t_audit = guarded(collect_skills, home, cwd)
     skills = skills or []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         f_updates = pool.submit(guarded, skill_updates, home, skills, orca_app)
         f_clients = pool.submit(guarded, client_updates, env_info, skills, orca_app)
-        f_news = pool.submit(guarded, fetch_news, now)
-        (updates, upd_err, t_updates), (clients, cli_err, t_clients), (news, news_err, t_news) = (
-            f_updates.result(), f_clients.result(), f_news.result())
-    errors = [e for e in (env_err, skills_err, upd_err, cli_err, news_err) if e]
-    # Time per report row. Skill update checks, client updates and news run in
+        (updates, upd_err, t_updates), (clients, cli_err, t_clients) = (
+            f_updates.result(), f_clients.result())
+    errors = [e for e in (env_err, skills_err, upd_err, cli_err) if e]
+    # Time per report row. Skill update checks and client updates run in
     # parallel, so these overlap and don't add up to `total`.
     timings = {
         "skills": mmss(t_audit + t_updates),
         "updates": mmss(t_clients),
-        "news": mmss(t_news),
         "total": mmss(time.monotonic() - started),
     }
     return {
@@ -650,7 +590,6 @@ def probe(home: Path, cwd: Path, env: dict[str, str], orca_app: Path = ORCA_APP)
         "skills": {**summarize_skills(skills, updates or []), "items": skills},
         "skillUpdates": updates or [],
         "clientUpdates": clients or [],
-        "news": news or {"status": "fail", "errors": [news_err]},
         "timings": timings,
         "errors": errors,
     }
