@@ -63,6 +63,8 @@ Server states:
 
 ## 4. Browser
 
+This tests whether you can reach the user's own browser, with their sign-ins, not just open a public site.
+
 Use the first route that exists in this session. Before using it, load the skill that covers it, if that skill is listed:
 
 1. Claude in Chrome (`mcp__claude-in-chrome__*`, skill `chrome-browser`). Read the tab context first, then work in a **new tab**.
@@ -70,10 +72,16 @@ Use the first route that exists in this session. Before using it, load the skill
 3. Orca's embedded browser: the `orca` CLI is available inside Orca. Use skill `orca-cli` and its browser reference.
 4. None of these → `–`.
 
-Open `https://www.dr.dk` and read back the page title. Close any tab you opened.
+1. In a **new tab**, open `https://myaccount.google.com`. Don't click or type anything there.
+2. Check whether the page shows a signed-in Google account (an account name or picture) or a sign-in form.
+3. If the route can see tabs the user opened themselves, not just the ones you opened, count them. Count only; never read or report their titles or addresses.
+4. Close every tab you opened.
 
-- `✔` the title came back: `Orca browser → opened dr.dk`
-- If a route fails, report the error you observed, then try the next route. A generic error doesn't prove the site blocked you.
+Never put the account name, email address or any page content in the report.
+
+- `✔` the page shows a signed-in account: `Claude in Chrome → your Chrome, signed in to Google`, plus `· 14 open tabs` if you counted them
+- `⚠` the browser works but shows a sign-in form, so it isn't the user's signed-in browser: `Built-in browser → works, but not signed in to Google`
+- `✖` the route errored. Report the error you observed, then try the next route. A generic error doesn't prove the site blocked you.
 
 ## 5. Computer use
 
@@ -122,7 +130,7 @@ Output only this. No preamble, and nothing after it except the closing line if o
 
 | Check | | Time | Result |
 |---|:-:|--:|---|
-| Browser | ✔ | 0:18 | Orca browser → opened dr.dk |
+| Browser | ✔ | 0:18 | Claude in Chrome → your Chrome, signed in to Google |
 | Computer use | ✔ | 2:05 | open-cu → smiley thumbs-up drawn in Freeform |
 | Web search | ✔ | 0:09 | WebSearch + WebFetch → **DR** · [Samsø frygter eksplosion i dieselpris](https://www.dr.dk/…) — Samsø's ferry company faces a monthly shortfall of DKK 650,000 as diesel prices rise. |
 | Skills | ⚠ | 0:03 | 47 ok · 3 warnings · 1 update |

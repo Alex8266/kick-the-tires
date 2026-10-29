@@ -7,7 +7,7 @@ It checks:
 - **Client:** which client, agent and model are running
 - **Skills:** every installed skill, for broken or mismatched files and available updates
 - **MCP servers:** each connected server, with one read-only test call
-- **Browser:** opens dr.dk through whichever browser route the session has
+- **Browser:** opens your Google account page in your own browser to confirm the agent can use your signed-in sessions (the report never shows your name or email)
 - **Computer use:** draws a smiley person giving a thumbs-up in a desktop app
 - **Web search:** the agent searches the web for fresh Danish news, then fetches the article it finds, to prove it can get live information from the internet
 - **Updates:** newer releases of Claude Code, Codex and Orca
