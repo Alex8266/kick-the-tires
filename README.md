@@ -20,4 +20,5 @@ Needs `git` and `python3` (standard library only). Built and tested on macOS wit
 
 ```text
 Install the "kick-the-tires" agent skill from https://github.com/Alex8266/kick-the-tires.
+Then, if you can, restart the app you're running in and start the skill in a fresh new chat.
 ```
